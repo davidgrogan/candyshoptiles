@@ -1,17 +1,25 @@
-{# Static (non-interactive) picture of a grid. `cells` items need r, c,
-   title and filename. `max_px` caps the rendered width. #}
+{# Static (non-interactive) picture of a grid, drawn to true proportions:
+   tiles and the spacing between them are positioned as percentages of the
+   wall's real size in inches, so it scales to any width. `cells` items
+   need r, c, title and filename; `grid` comes from catalog.grid_info(). #}
 {% macro grid_preview(cells, grid, max_px=320) -%}
   {%- set cols = grid.cols if grid.cols else 1 -%}
   {%- set rows = grid.rows if grid.rows else 1 -%}
-  <div class="grid-preview" style="--cols: {{ cols }}; --rows: {{ rows }}; max-width: min(100%, {{ [max_px, cols * 140]|min }}px);"
+  {%- set W = grid.width_in if grid.width_in else grid.tile_w -%}
+  {%- set H = grid.height_in if grid.height_in else grid.tile_h -%}
+  <div class="grid-preview" style="aspect-ratio: {{ W }} / {{ H }}; max-width: min(100%, {{ [max_px, cols * 140]|min }}px);"
        role="img" aria-label="{{ cells|length }} tile grid, {{ rows }} by {{ cols }}">
     {%- for t in cells %}
-      <img src="{{ image_url(t.filename) }}" alt="{{ t.title }}" title="{{ t.title }}"
-           style="grid-row: {{ t.r + 1 }}; grid-column: {{ t.c + 1 }};" loading="lazy">
+      <img src="{{ image_url(t.filename) }}" alt="{{ t.title }}" title="{{ t.title }}" loading="lazy"
+           style="left: {{ '%.4f'|format(t.c * (grid.tile_w + grid.spacing) / W * 100) }}%; top: {{ '%.4f'|format(t.r * (grid.tile_h + grid.spacing) / H * 100) }}%; width: {{ '%.4f'|format(grid.tile_w / W * 100) }}%; height: {{ '%.4f'|format(grid.tile_h / H * 100) }}%;">
     {%- endfor %}
   </div>
 {%- endmacro %}
 
 {% macro dims(grid) -%}
-  {{ grid.width_in }}″ wide × {{ grid.height_in }}″ tall
+  {{ grid.width_in|inches }} wide × {{ grid.height_in|inches }} tall
+{%- endmacro %}
+
+{% macro spacing_note(grid) -%}
+  {{ grid.spacing|inches }} between tiles
 {%- endmacro %}

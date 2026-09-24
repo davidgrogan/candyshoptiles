@@ -8,7 +8,7 @@ import secrets
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from app.catalog import grid_info, image_ids, palette, resolve_cells
-from app.layout import LayoutError, dump_layout, parse_layout
+from app.layout import DEFAULT_SPACING_IN, LayoutError, dump_layout, parse_layout, parse_spacing
 from app.models import ArtImage, OrderRequest, db
 from app.notify import send_order_notification
 from app.pricing import SAMPLE_TILE_CENTS, quote
@@ -26,15 +26,16 @@ def _layout_from_form():
         abort(400, description="That design couldn't be read -- please go back and try again.")
 
 
-def _render_form(layout, form=None, errors=None):
+def _render_form(layout, spacing, form=None, errors=None):
     cells = resolve_cells(layout)
     sample_choices = palette()
     default_sample = cells[0]["image_id"] if cells else (sample_choices[0]["id"] if sample_choices else None)
     return render_template(
         "order_form.html",
         cells=cells,
-        grid=grid_info(cells),
+        grid=grid_info(cells, spacing),
         layout_json=dump_layout(layout),
+        spacing=spacing,
         tiles_quote=quote(len(cells)),
         sample_cents=SAMPLE_TILE_CENTS,
         sample_choices=sample_choices,
@@ -49,13 +50,15 @@ def start():
     """POST from the designer or a sample set carries the grid; a plain GET
     is the "just order a sample tile" path with an empty grid."""
     layout = _layout_from_form() if request.method == "POST" else []
+    spacing = parse_spacing(request.form.get("spacing")) if request.method == "POST" else DEFAULT_SPACING_IN
     form = {"include_sample": "1"} if not layout else {}
-    return _render_form(layout, form=form)
+    return _render_form(layout, spacing, form=form)
 
 
 @bp.route("", methods=["POST"])
 def submit():
     layout = _layout_from_form()
+    spacing = parse_spacing(request.form.get("spacing"))
     form = {k: (request.form.get(k) or "").strip() for k in FIELD_LIMITS}
     form["include_sample"] = request.form.get("include_sample", "")
     form["sample_image_id"] = request.form.get("sample_image_id", "")
@@ -76,20 +79,25 @@ def submit():
         if len(form[key]) > limit:
             errors[key] = f"Please keep this under {limit} characters."
 
-    include_sample = form["include_sample"] == "1"
+    # An order is either tiles (from the designer or a sample set) or a
+    # single sample tile -- never both. A sample request is ignored on a
+    # tile order rather than trusted from the form.
+    cells = resolve_cells(layout)
+    include_sample = not cells and form["include_sample"] == "1"
     sample = None
     if include_sample:
         sample_id = request.form.get("sample_image_id", type=int)
         sample = db.session.get(ArtImage, sample_id) if sample_id else None
         if sample is None:
             errors["sample_image_id"] = "Please choose which design you'd like as your sample."
-
-    cells = resolve_cells(layout)
+        elif form["email"] and _already_had_sample(form["email"]):
+            errors["layout"] = ("Our records show a sample tile has already been ordered with this email address. "
+                                "Sample tiles are one time only per customer.")
     if not cells and not include_sample:
-        errors["layout"] = "Your order is empty -- add some tiles or a sample tile."
+        errors["layout"] = errors.get("layout") or "Your order is empty -- add some tiles or order a sample tile."
 
     if errors:
-        return _render_form(layout, form=form, errors=errors)
+        return _render_form(layout, spacing, form=form, errors=errors)
 
     q = quote(len(cells), include_sample)
     order = OrderRequest(
@@ -100,6 +108,7 @@ def submit():
         address=form["address"],
         notes=form["notes"] or None,
         layout_json=dump_layout(cells),
+        spacing_in=spacing,
         tile_count=len(cells),
         include_sample=include_sample,
         sample_image_id=sample.id if sample else None,
@@ -113,10 +122,22 @@ def submit():
     return redirect(url_for("orders.thanks", token=order.token))
 
 
+def _already_had_sample(email):
+    """One sample per customer, matched on email (case-insensitive).
+    Cancelled orders don't count, so you can release someone's sample by
+    cancelling it in Admin -> Orders."""
+    return db.session.query(OrderRequest.id).filter(
+        db.func.lower(OrderRequest.email) == email.lower(),
+        OrderRequest.include_sample.is_(True),
+        OrderRequest.status != "cancelled",
+    ).first() is not None
+
+
 @bp.route("/thanks/<token>")
 def thanks(token):
     order = OrderRequest.query.filter_by(token=token).first()
     cells = order.layout if order else []
     return render_template(
-        "order_thanks.html", order=order, cells=cells, grid=grid_info(cells) if cells else None
+        "order_thanks.html", order=order, cells=cells,
+        grid=grid_info(cells, order.spacing_in) if cells else None
     )

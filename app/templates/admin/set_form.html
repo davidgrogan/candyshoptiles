@@ -12,6 +12,7 @@
   <form class="card summary" method="post" id="set-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="layout" id="set-layout" value="[]">
+    <input type="hidden" name="spacing" id="set-spacing" value="">
     <div class="field"><label for="name">Set name</label>
       <input type="text" id="name" name="name" value="{{ f.name or sample_set.name or '' }}" required maxlength="200"></div>
     <div class="field"><label for="description">Description <span class="hint">(shown on the Sample sets page)</span></label>

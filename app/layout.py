@@ -9,6 +9,11 @@ import json
 
 MAX_SPAN = 12  # rows or columns
 
+# Space between hung tiles, in inches -- part of a design, like its layout.
+DEFAULT_SPACING_IN = 0.5
+MAX_SPACING_IN = 3.0
+SPACING_STEP_IN = 0.25
+
 
 class LayoutError(ValueError):
     pass
@@ -58,6 +63,29 @@ def dimensions(layout):
     if not layout:
         return 0, 0
     return max(t["r"] for t in layout) + 1, max(t["c"] for t in layout) + 1
+
+
+def parse_spacing(raw, default=DEFAULT_SPACING_IN):
+    """Spacing from the browser -> a float in [0, MAX_SPACING_IN], snapped to
+    SPACING_STEP_IN. Anything unreadable falls back to the default."""
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return default
+    if value != value or value in (float("inf"), float("-inf")):  # NaN / inf
+        return default
+    value = min(MAX_SPACING_IN, max(0.0, value))
+    return round(value / SPACING_STEP_IN) * SPACING_STEP_IN
+
+
+def format_inches(value):
+    """24.5 -> '24½″', 0.25 -> '¼″', 0 -> '0″' (quarter-inch precision)."""
+    quarters = int(round(float(value or 0) * 4))
+    whole, frac = divmod(quarters, 4)
+    frac_s = ["", "¼", "½", "¾"][frac]
+    if whole == 0 and frac_s:
+        return frac_s + "″"
+    return f"{whole}{frac_s}″"
 
 
 def dump_layout(layout):

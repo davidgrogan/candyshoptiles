@@ -72,6 +72,9 @@ def create_app(test_config=None):
     app.jinja_env.filters["money"] = pricing.money
     app.jinja_env.globals["prices"] = pricing
     app.jinja_env.globals["image_url"] = image_url
+    from app.layout import format_inches
+
+    app.jinja_env.filters["inches"] = format_inches
 
     @app.context_processor
     def inject_is_admin():

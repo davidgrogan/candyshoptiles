@@ -1,9 +1,16 @@
 {% extends "base.html" %}
-{% from "_macros.html" import grid_preview, dims %}
+{% from "_macros.html" import grid_preview, dims, spacing_note %}
 {% block title %}Request your order · Candy Shop Tiles{% endblock %}
 {% block content %}
 <div class="intro">
   <h1>{% if cells %}Request your order{% else %}Order a sample tile{% endif %}</h1>
+  {% if not cells %}
+  <div class="sample-intro">
+    <span class="badge-once">One time only per customer</span>
+    <p>Would you like to order an “at cost” sample to verify the quality of the piece?
+      Each customer may order one (1) {{ sample_cents|money }} sample tile.</p>
+  </div>
+  {% endif %}
   <p>No payment is taken here. Send us your order and we'll get back to you with an invoice and shipping details.</p>
 </div>
 
@@ -13,42 +20,58 @@
   <section class="card order-summary" aria-label="Your order">
     {% if cells %}
       {{ grid_preview(cells, grid, 360) }}
-      <p class="set-meta" style="text-align:center">{{ cells|length }} tile{{ '' if cells|length == 1 else 's' }} · {{ dims(grid) }}</p>
+      <p class="set-meta" style="text-align:center">{{ cells|length }} tile{{ '' if cells|length == 1 else 's' }} · {{ dims(grid) }}{% if cells|length > 1 %} · {{ spacing_note(grid) }}{% endif %}</p>
       <p style="text-align:center"><a href="{{ url_for('main.designer') }}">← Back to the designer</a></p>
     {% else %}
-      <p>A single 8″ × 10″ tile so you can see the colors and finish in person before ordering a whole wall.</p>
+      {% set sel = (sample_choices|selectattr('id', 'equalto', (form.sample_image_id or 0)|int)|first)
+                   or (sample_choices|selectattr('id', 'equalto', default_sample)|first) %}
+      {% if sel %}
+      <figure class="sample-preview">
+        <img id="sample-preview-img" src="{{ sel.full }}" alt="{{ sel.title }}">
+        <figcaption id="sample-preview-title">{{ sel.title }}</figcaption>
+      </figure>
+      {% endif %}
+      <p>A single {{ prices.TILE_WIDTH_IN }}″ × {{ prices.TILE_HEIGHT_IN }}″ tile so you can see the colors and finish in person before ordering a whole wall.</p>
       <p><a href="{{ url_for('main.designer') }}">Or design a whole wall →</a></p>
     {% endif %}
     <table class="price-table">
       {% if cells %}
       <tr><td>{{ tiles_quote.tile_count }} × {{ tiles_quote.unit_cents|money }} tile{{ '' if cells|length == 1 else 's' }}</td><td>{{ tiles_quote.tiles_cents|money }}</td></tr>
+      <tr class="total"><td>Total</td><td>{{ tiles_quote.tiles_cents|money }}</td></tr>
+      {% else %}
+      <tr><td>Sample tile <span class="hint">(one time only per customer)</span></td><td>{{ sample_cents|money }}</td></tr>
+      <tr class="total"><td>Total</td><td>{{ sample_cents|money }}</td></tr>
       {% endif %}
-      <tr id="sample-line" {% if form.include_sample != '1' %}hidden{% endif %}><td>Sample tile</td><td>{{ sample_cents|money }}</td></tr>
-      <tr class="total"><td>Total</td><td id="order-total"
-          data-tiles="{{ tiles_quote.tiles_cents }}" data-sample="{{ sample_cents }}">
-          {{ (tiles_quote.tiles_cents + (sample_cents if form.include_sample == '1' else 0))|money }}</td></tr>
     </table>
   </section>
 
   <form class="card" method="post" action="{{ url_for('orders.submit') }}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="layout" value="{{ layout_json }}">
+    <input type="hidden" name="spacing" value="{{ spacing }}">
     <div class="hp" aria-hidden="true">
       <label for="website">Leave this empty</label>
       <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
     </div>
 
-    {% if sample_choices %}
+    {# Samples are only ever their own order, from the "Order a sample" page --
+       never offered alongside tiles (someone buying a wall doesn't need one). #}
+    {% if not cells and sample_choices %}
     <div class="sample-box field {% if errors.sample_image_id %}has-error{% endif %}">
-      <label class="check">
-        <input type="checkbox" name="include_sample" value="1" id="include-sample" {% if form.include_sample == '1' %}checked{% endif %}>
-        <span>{% if cells %}Add a sample tile ({{ sample_cents|money }}, one per order){% else %}Sample tile -- {{ sample_cents|money }} (one per order){% endif %}</span>
-      </label>
-      <select name="sample_image_id" id="sample-image" aria-label="Which design for your sample">
+      <input type="hidden" name="include_sample" value="1">
+      <p class="sample-box-title">Choose your sample tile</p>
+      <fieldset class="sample-picker" id="sample-picker">
+        <legend class="visually-hidden">Which design for your sample tile</legend>
         {% for img in sample_choices %}
-          <option value="{{ img.id }}" {% if (form.sample_image_id|string == img.id|string) or (not form.sample_image_id and img.id == default_sample) %}selected{% endif %}>{{ img.title }}</option>
+          <label class="sample-option" title="{{ img.title }}">
+            <input type="radio" name="sample_image_id" value="{{ img.id }}" class="visually-hidden"
+                   data-full="{{ img.full }}" data-title="{{ img.title }}"
+                   {% if (form.sample_image_id|string == img.id|string) or (not form.sample_image_id and img.id == default_sample) %}checked{% endif %}>
+            <img src="{{ img.thumb }}" alt="" loading="lazy">
+            <span>{{ img.title }}</span>
+          </label>
         {% endfor %}
-      </select>
+      </fieldset>
       {% if errors.sample_image_id %}<p class="field-error">{{ errors.sample_image_id }}</p>{% endif %}
     </div>
     {% endif %}
@@ -75,21 +98,22 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% if not cells %}
 <script>
 (function () {
-  var box = document.getElementById("include-sample");
-  if (!box) return;
-  var total = document.getElementById("order-total"), line = document.getElementById("sample-line");
-  var select = document.getElementById("sample-image");
-  function fmt(c) { var d = Math.floor(c / 100), r = c % 100; return "$" + d.toLocaleString("en-US") + (r ? "." + String(r).padStart(2, "0") : ""); }
-  function update() {
-    var cents = Number(total.dataset.tiles) + (box.checked ? Number(total.dataset.sample) : 0);
-    total.textContent = fmt(cents);
-    line.hidden = !box.checked;
-    select.disabled = !box.checked;
-  }
-  box.addEventListener("change", update);
-  update();
+  // Show the chosen sample tile large in the order summary.
+  var picker = document.getElementById("sample-picker");
+  var previewImg = document.getElementById("sample-preview-img");
+  if (!picker || !previewImg) return;
+  var previewTitle = document.getElementById("sample-preview-title");
+  picker.addEventListener("change", function () {
+    var chosen = picker.querySelector("input:checked");
+    if (!chosen) return;
+    previewImg.src = chosen.dataset.full;
+    previewImg.alt = chosen.dataset.title;
+    previewTitle.textContent = chosen.dataset.title;
+  });
 })();
 </script>
+{% endif %}
 {% endblock %}

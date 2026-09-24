@@ -5,7 +5,7 @@ via pricing_config(), and every order total is recomputed here on the
 server rather than trusted from the browser.
 """
 
-SAMPLE_TILE_CENTS = 2900   # one per order
+SAMPLE_TILE_CENTS = 2900   # "at cost"; one per customer, ordered on its own
 SINGLE_TILE_CENTS = 4900   # an order of exactly one tile
 MULTI_TILE_CENTS = 3900    # each, when ordering two or more
 

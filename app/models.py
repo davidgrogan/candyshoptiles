@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 import sqlalchemy as sa
 from flask_sqlalchemy import SQLAlchemy
 
+from app.layout import DEFAULT_SPACING_IN
+
 db = SQLAlchemy()
 
 CONTENT = {"sync": "content"}
@@ -92,6 +94,7 @@ class SampleSet(db.Model):
     description = db.Column(db.Text)
     # JSON list of {"r", "c", "image_id"} -- see app/layout.py.
     layout_json = db.Column(db.Text, nullable=False, default="[]")
+    spacing_in = db.Column(db.Float, nullable=False, default=DEFAULT_SPACING_IN, server_default="0.5")
     sort_order = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     is_published = db.Column(db.Boolean, nullable=False, default=True, server_default=sa.true())
     created_at = db.Column(db.DateTime, default=utcnow)
@@ -110,6 +113,7 @@ class SavedDesign(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     slug = db.Column(db.String(16), unique=True, nullable=False, index=True)
     layout_json = db.Column(db.Text, nullable=False)
+    spacing_in = db.Column(db.Float, nullable=False, default=DEFAULT_SPACING_IN, server_default="0.5")
     created_at = db.Column(db.DateTime, default=utcnow)
 
     @property
@@ -137,6 +141,7 @@ class OrderRequest(db.Model):
     # "filename"} -- keeps the order readable even if an image is later
     # renamed or deleted.
     layout_json = db.Column(db.Text, nullable=False, default="[]")
+    spacing_in = db.Column(db.Float, nullable=False, default=DEFAULT_SPACING_IN, server_default="0.5")
     tile_count = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     include_sample = db.Column(db.Boolean, nullable=False, default=False, server_default=sa.false())
     sample_image_id = db.Column(db.Integer)

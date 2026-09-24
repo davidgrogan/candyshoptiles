@@ -58,7 +58,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>Art tiles, {{ prices.TILE_WIDTH_IN }}″ × {{ prices.TILE_HEIGHT_IN }}″ each. One tile {{ prices.SINGLE_TILE_CENTS|money }} · two or more {{ prices.MULTI_TILE_CENTS|money }} each · sample tile {{ prices.SAMPLE_TILE_CENTS|money }}.</p>
+    <p>Art tiles, {{ prices.TILE_WIDTH_IN }}″ × {{ prices.TILE_HEIGHT_IN }}″ each. One tile {{ prices.SINGLE_TILE_CENTS|money }} · two or more {{ prices.MULTI_TILE_CENTS|money }} each · sample tile {{ prices.SAMPLE_TILE_CENTS|money }} (one time only per customer).</p>
     {% if not is_admin %}<a href="{{ url_for('auth.login') }}" class="footer-login">Admin</a>{% endif %}
   </footer>
   {% block scripts %}{% endblock %}

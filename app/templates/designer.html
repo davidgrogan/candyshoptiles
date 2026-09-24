@@ -33,13 +33,14 @@
         <button type="button" class="btn btn-small btn-secondary" id="share-copy">Copy</button>
       </div>
     </div>
-    <p class="summary-sample">Not ready for a whole wall? <a href="{{ url_for('orders.start') }}">Order a sample tile</a> for {{ prices.SAMPLE_TILE_CENTS|money }}.</p>
+    <p class="summary-sample">Not ready for a whole wall? <a href="{{ url_for('orders.start') }}">Order a sample tile</a> for {{ prices.SAMPLE_TILE_CENTS|money }} -- <strong>one time only per customer</strong>.</p>
   </aside>
 </div>
 
 <form method="post" action="{{ url_for('orders.start') }}" id="order-form" hidden>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="layout" id="order-layout">
+  <input type="hidden" name="spacing" id="order-spacing">
 </form>
 
 {% include "_wall.html" %}

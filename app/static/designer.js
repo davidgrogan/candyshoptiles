@@ -27,6 +27,8 @@
   var pricing = cfg.pricing;
   var images = new Map(cfg.images.map(function (i) { return [i.id, i]; }));
   var cells = new Map(); // "r,c" -> image id
+  var spacingCfg = cfg.spacing;
+  var spacing = spacingCfg.default; // inches between tiles, part of the design
 
   var gridEl = document.getElementById("grid");
   var canvasEl = document.getElementById("board-canvas");
@@ -35,6 +37,8 @@
   var dimsEl = document.getElementById("board-dims");
   var clearBtn = document.getElementById("clear-board");
   var boardEl = canvasEl.closest(".board");
+  var spacingInput = document.getElementById("spacing-input");
+  var spacingOut = document.getElementById("spacing-value");
 
   var drag = null;
   var suppressClick = false;
@@ -100,6 +104,26 @@
     return out;
   }
 
+  function clampSpacing(v) {
+    v = Number(v);
+    if (!isFinite(v)) return spacingCfg.default;
+    v = Math.min(spacingCfg.max, Math.max(0, v));
+    return Math.round(v / spacingCfg.step) * spacingCfg.step;
+  }
+
+  // 24.5 -> "24½″" (quarter-inch precision), matching layout.format_inches().
+  function inches(v) {
+    var q = Math.round(v * 4), whole = Math.floor(q / 4), frac = ["", "¼", "½", "¾"][q % 4];
+    return (whole === 0 && frac ? frac : whole + frac) + "″";
+  }
+
+  function wallSize(b) {
+    return {
+      w: b.cols * pricing.tileWidthIn + (b.cols - 1) * spacing,
+      h: b.rows * pricing.tileHeightIn + (b.rows - 1) * spacing,
+    };
+  }
+
   function load(items) {
     cells = new Map();
     (items || []).forEach(function (t) {
@@ -142,19 +166,22 @@
   function sizeCells(rows, cols) {
     // Size as though the drop ring is always there, so tiles don't jump
     // when a drag starts and the ring appears.
-    var gap = 6;
+    // Gaps are drawn to scale: the chosen spacing relative to a tile's
+    // real width, so 1" between 8" tiles looks like 1/8 of a tile.
     var r = rows + 2, c = cols + 2;
-    var availW = canvasEl.clientWidth - 16;
+    var k = spacing / pricing.tileWidthIn;             // gap as a fraction of cell width
+    var aspect = pricing.tileHeightIn / pricing.tileWidthIn;
+    var availW = canvasEl.clientWidth - 26;            // canvas padding + border
     var availH = Math.max(280, Math.min(window.innerHeight * 0.66, 720));
-    var w = Math.min(
-      150,
-      (availW - gap * (c - 1)) / c,
-      ((availH - gap * (r - 1)) / r) * (pricing.tileWidthIn / pricing.tileHeightIn)
-    );
-    w = Math.max(28, Math.floor(w));
-    var h = Math.round(w * pricing.tileHeightIn / pricing.tileWidthIn);
+    var w = Math.min(150, availW / (c + (c - 1) * k), availH / (r * aspect + (r - 1) * k));
+    // No artificial minimum: the grid must always fit the canvas width,
+    // never push the page into horizontal scrolling.
+    w = Math.max(8, Math.floor(w));
+    var gap = Math.floor(w * k);
+    var h = Math.round(w * aspect);
     gridEl.style.setProperty("--cell-w", w + "px");
     gridEl.style.setProperty("--cell-h", h + "px");
+    gridEl.style.gap = gap + "px";
     canvasEl.style.minHeight = (r * h + (r - 1) * gap + 24) + "px";
   }
 
@@ -211,9 +238,8 @@
   function renderSummary() {
     var n = cells.size;
     var b = bounds();
-    var sizeText = b
-      ? (b.cols * pricing.tileWidthIn) + "″ wide × " + (b.rows * pricing.tileHeightIn) + "″ tall"
-      : "--";
+    var size = b ? wallSize(b) : null;
+    var sizeText = size ? inches(size.w) + " wide × " + inches(size.h) + " tall" : "--";
     if (dimsEl) {
       dimsEl.textContent = b
         ? n + " tile" + (n === 1 ? "" : "s") + " · " + b.cols + " across × " + b.rows + " down · " + sizeText
@@ -255,9 +281,19 @@
     if (cfg.mode === "admin") {
       var input = document.getElementById("set-layout");
       if (input) input.value = json;
+      var sp = document.getElementById("set-spacing");
+      if (sp) sp.value = String(spacing);
       return;
     }
-    try { localStorage.setItem(STORAGE_KEY, json); } catch (e) { /* private mode etc. */ }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ layout: layout(), spacing: spacing }));
+    } catch (e) { /* private mode etc. */ }
+  }
+
+  function setSpacing(v) {
+    spacing = clampSpacing(v);
+    if (spacingInput) spacingInput.value = String(spacing);
+    if (spacingOut) spacingOut.textContent = inches(spacing);
   }
 
   function changed() {
@@ -452,11 +488,12 @@
 
   bind("btn-order", function () {
     document.getElementById("order-layout").value = JSON.stringify(layout());
+    document.getElementById("order-spacing").value = String(spacing);
     document.getElementById("order-form").submit();
   });
 
   bind("btn-wall", function () {
-    if (window.CSTWall) window.CSTWall.open(layout(), images, pricing);
+    if (window.CSTWall) window.CSTWall.open(layout(), images, pricing, spacing);
   });
 
   bind("btn-share", function () {
@@ -466,7 +503,7 @@
     fetch(cfg.urls.share, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf() },
-      body: JSON.stringify({ layout: layout() }),
+      body: JSON.stringify({ layout: layout(), spacing: spacing }),
       credentials: "same-origin",
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
@@ -495,6 +532,21 @@
     }
   });
 
+  if (spacingInput) {
+    spacingInput.min = "0";
+    spacingInput.max = String(spacingCfg.max);
+    spacingInput.step = String(spacingCfg.step);
+    spacingInput.addEventListener("input", function () {
+      setSpacing(spacingInput.value);
+      // Same tiles, new gaps: re-measure rather than rebuild the board.
+      resizeBoard();
+      renderSummary();
+      persist();
+      var share = document.getElementById("share-box");
+      if (share) share.hidden = true;
+    });
+  }
+
   var setForm = document.getElementById("set-form");
   if (setForm) {
     setForm.addEventListener("submit", function (e) {
@@ -506,22 +558,119 @@
     });
   }
 
+  // --- resizable palette -------------------------------------------------------
+  //
+  // The panel's width is user-adjustable (drag the handle on its right edge,
+  // arrow keys when it's focused, double-click to reset) and remembered in
+  // localStorage. Thumbnails wrap into as many columns as fit (CSS
+  // auto-fill), so the palette never scrolls sideways. On phones the panel
+  // sits above the board at full width and the handle is hidden.
+
+  var WIDTH_KEY = "candyshoptiles:paletteWidth";
+  var DEFAULT_PALETTE = 250, MIN_PALETTE = 180, MIN_BOARD = 320;
+  var designerEl = document.getElementById("designer");
+  var paletteBox = paletteEl.closest(".palette");
+  var resizer = document.getElementById("palette-resizer");
+
+  function maxPaletteWidth() {
+    return Math.max(MIN_PALETTE, designerEl.clientWidth - MIN_BOARD);
+  }
+
+  function setPaletteWidth(w, save) {
+    w = Math.round(Math.min(maxPaletteWidth(), Math.max(MIN_PALETTE, w)));
+    designerEl.style.setProperty("--palette-w", w + "px");
+    if (resizer) {
+      resizer.setAttribute("aria-valuenow", String(w));
+      resizer.setAttribute("aria-valuemax", String(Math.round(maxPaletteWidth())));
+    }
+    if (save) {
+      try { localStorage.setItem(WIDTH_KEY, String(w)); } catch (e) { /* ignore */ }
+    }
+    resizeBoard();
+  }
+
+  // Width changes only need the cells re-measured, not rebuilt -- rebuilding
+  // on every frame of a drag makes the tile images flicker.
+  function resizeBoard() {
+    var b = bounds();
+    sizeCells(b ? b.rows : 1, b ? b.cols : 1);
+  }
+
+  if (resizer) {
+    resizer.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      resizer.setPointerCapture(e.pointerId);
+      var startX = e.clientX;
+      var startW = paletteBox.getBoundingClientRect().width;
+      var pending = null;
+      document.body.classList.add("is-resizing");
+      function move(ev) {
+        pending = startW + ev.clientX - startX;
+        requestAnimationFrame(function () {
+          if (pending !== null) { setPaletteWidth(pending, false); pending = null; }
+        });
+      }
+      function up() {
+        resizer.removeEventListener("pointermove", move);
+        resizer.removeEventListener("pointerup", up);
+        resizer.removeEventListener("pointercancel", up);
+        document.body.classList.remove("is-resizing");
+        setPaletteWidth(paletteBox.getBoundingClientRect().width, true);
+      }
+      resizer.addEventListener("pointermove", move);
+      resizer.addEventListener("pointerup", up);
+      resizer.addEventListener("pointercancel", up);
+    });
+    resizer.addEventListener("keydown", function (e) {
+      var w = paletteBox.getBoundingClientRect().width;
+      var step = e.shiftKey ? 60 : 20;
+      if (e.key === "ArrowLeft") w -= step;
+      else if (e.key === "ArrowRight") w += step;
+      else if (e.key === "Home") w = MIN_PALETTE;
+      else if (e.key === "End") w = maxPaletteWidth();
+      else return;
+      e.preventDefault();
+      setPaletteWidth(w, true);
+    });
+    resizer.addEventListener("dblclick", function () { setPaletteWidth(DEFAULT_PALETTE, true); });
+  }
+
   // --- start -----------------------------------------------------------------
 
   var initial = cfg.initialLayout;
+  var initialSpacing = cfg.initialSpacing;
   if (initial == null && cfg.mode === "customer") {
-    try { initial = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch (e) { initial = []; }
+    try {
+      var stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      // Older saves were a bare layout array, before spacing existed.
+      if (Array.isArray(stored)) {
+        initial = stored;
+      } else {
+        initial = stored.layout || [];
+        if (initialSpacing == null) initialSpacing = stored.spacing;
+      }
+    } catch (e) { initial = []; }
   }
+  setSpacing(initialSpacing == null ? spacingCfg.default : initialSpacing);
   load(initial);
   renderFilters();
   renderPalette();
   changed();
 
+  var savedWidth = DEFAULT_PALETTE;
+  try { savedWidth = Number(localStorage.getItem(WIDTH_KEY)) || DEFAULT_PALETTE; } catch (e) { /* ignore */ }
+  setPaletteWidth(savedWidth, false);
+
   var resizeTimer;
   window.addEventListener("resize", function () {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(render, 120);
+    resizeTimer = setTimeout(function () {
+      // Re-clamp against the new window size (also re-measures the board).
+      setPaletteWidth(paletteBox.getBoundingClientRect().width, false);
+    }, 120);
   });
 
-  window.CSTDesigner = { layout: layout, images: images, pricing: pricing };
+
+  window.CSTDesigner = { layout: layout, images: images, pricing: pricing, inches: inches };
 })();

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import grid_preview, dims %}
+{% from "_macros.html" import grid_preview, dims, spacing_note %}
 {% block title %}Order #{{ order.id }} · Admin{% endblock %}
 {% block content %}
 <div class="admin-head">
@@ -10,7 +10,7 @@
   <section class="card order-summary">
     {% if cells %}
       {{ grid_preview(cells, grid, 420) }}
-      <p class="set-meta" style="text-align:center">{{ order.tile_count }} tiles · {{ grid.cols }} across × {{ grid.rows }} down · {{ dims(grid) }}</p>
+      <p class="set-meta" style="text-align:center">{{ order.tile_count }} tiles · {{ grid.cols }} across × {{ grid.rows }} down · {{ dims(grid) }} · {{ spacing_note(grid) }}</p>
       <h2>Tiles (row, column from top-left)</h2>
       <ol class="hint">
         {% for t in cells %}<li>Row {{ t.r + 1 }}, col {{ t.c + 1 }}: {{ t.title }}</li>{% endfor %}

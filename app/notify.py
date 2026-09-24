@@ -9,6 +9,7 @@ goes out.
 import requests
 from flask import current_app, url_for
 
+from app.layout import format_inches
 from app.pricing import money
 
 
@@ -25,7 +26,7 @@ def send_order_notification(order):
         f"Email: {order.email}",
         f"Phone: {order.phone or '-'}",
         "",
-        f"Tiles: {order.tile_count}",
+        f"Tiles: {order.tile_count} (spacing between tiles: {format_inches(order.spacing_in)})",
         f"Sample tile: {order.sample_image_title if order.include_sample else 'no'}",
         "",
         "Ship to:",

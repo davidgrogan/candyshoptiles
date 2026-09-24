@@ -2,7 +2,10 @@
    their browser (URL.createObjectURL) -- it is never uploaded. #}
 <dialog class="wall-dialog" id="wall-dialog" aria-labelledby="wall-title">
   <div class="wall-head">
-    <h2 id="wall-title">Your tiles on a wall</h2>
+    <div>
+      <h2 id="wall-title">Your tiles on a wall</h2>
+      <p class="wall-size" id="wall-size" aria-live="polite"></p>
+    </div>
     <button type="button" class="btn btn-ghost btn-small" id="wall-close" aria-label="Close">Close ✕</button>
   </div>
   <div class="wall-choices" role="radiogroup" aria-label="Choose a wall">
@@ -27,6 +30,8 @@
     <div class="wall-frame" id="wall-stage">
       <img id="wall-bg" alt="Wall background">
       <div class="wall-grid" id="wall-grid" title="Drag to move"></div>
+      <div class="wall-dim wall-dim-h" id="wall-dim-w" aria-hidden="true"><span></span></div>
+      <div class="wall-dim wall-dim-v" id="wall-dim-h" aria-hidden="true"><span></span></div>
     </div>
   </div>
   <div class="wall-controls">
@@ -34,6 +39,7 @@
     <input type="range" id="wall-scale" min="25" max="250" value="100">
     <span id="wall-scale-label">True to scale</span>
     <button type="button" class="btn btn-ghost btn-small" id="wall-reset">Reset</button>
+    <label class="check wall-dim-toggle"><input type="checkbox" id="wall-show-dims" checked> Show measurements</label>
   </div>
   <p class="hint" id="wall-hint">Drag the tiles to move them. Built-in walls are drawn true to scale.</p>
 </dialog>

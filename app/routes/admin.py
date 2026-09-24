@@ -7,13 +7,14 @@ ever come in on the live site, and the sync never touches them. Admin
 pages show a reminder banner when they're running against Postgres.
 """
 import os
+from urllib.parse import unquote_plus
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from app.auth import require_admin
 from app.catalog import designer_config, grid_info, image_ids, resolve_cells
 from app.images import ImageUploadError, delete_files, save_upload
-from app.layout import LayoutError, dump_layout, parse_layout
+from app.layout import LayoutError, dump_layout, parse_layout, parse_spacing
 from app.models import ORDER_STATUSES, ArtImage, Category, OrderRequest, SampleSet, db
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -73,7 +74,9 @@ def image_new():
             except ImageUploadError as exc:
                 problems.append(str(exc))
                 continue
-            title = os.path.splitext(os.path.basename(f.filename))[0].replace("_", " ").replace("-", " ").strip()
+            # "Kala%27s+Arrival.jpg" (web-encoded) / "my_new-tile.png" -> readable titles
+            stem = unquote_plus(os.path.splitext(os.path.basename(f.filename))[0])
+            title = " ".join(stem.replace("_", " ").replace("-", " ").split())
             db.session.add(ArtImage(title=(title or "Untitled")[:200], filename=base, width=w, height=h,
                                     sort_order=next_order, categories=list(chosen)))
             next_order += 1
@@ -187,13 +190,14 @@ def sets():
     rows = []
     for s in SampleSet.query.order_by(SampleSet.sort_order, SampleSet.id):
         cells = resolve_cells(s.layout)
-        rows.append({"set": s, "cells": cells, "grid": grid_info(cells)})
+        rows.append({"set": s, "cells": cells, "grid": grid_info(cells, s.spacing_in)})
     return render_template("admin/sets.html", rows=rows)
 
 
 def _set_form(sample_set, keep_submitted=False):
-    layout = sample_set.layout
+    layout, spacing = sample_set.layout, sample_set.spacing_in
     if keep_submitted:
+        spacing = parse_spacing(request.form.get("spacing"), default=spacing)
         # Re-show what was on the board when the save failed validation,
         # not the last saved version.
         try:
@@ -204,7 +208,7 @@ def _set_form(sample_set, keep_submitted=False):
         "admin/set_form.html",
         sample_set=sample_set,
         form=request.form if keep_submitted else None,
-        config=designer_config(layout, mode="admin", include_hidden=True),
+        config=designer_config(layout, mode="admin", include_hidden=True, initial_spacing=spacing),
     )
 
 
@@ -226,6 +230,7 @@ def _save_set(sample_set):
     sample_set.sort_order = _int("sort_order", sample_set.sort_order or 0)
     sample_set.is_published = request.form.get("is_published") == "1"
     sample_set.layout_json = dump_layout(layout)
+    sample_set.spacing_in = parse_spacing(request.form.get("spacing"))
     return sample_set
 
 
@@ -288,4 +293,4 @@ def order_detail(order_id):
         return redirect(url_for("admin.order_detail", order_id=order.id))
     cells = order.layout
     return render_template("admin/order_detail.html", order=order, cells=cells,
-                           grid=grid_info(cells) if cells else None)
+                           grid=grid_info(cells, order.spacing_in) if cells else None)

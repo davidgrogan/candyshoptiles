@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import grid_preview, dims %}
+{% from "_macros.html" import grid_preview, dims, spacing_note %}
 {% block title %}Sample sets · Admin{% endblock %}
 {% block content %}
 <div class="admin-head">
@@ -13,7 +13,7 @@
     {% if row.cells %}{{ grid_preview(row.cells, row.grid, 260) }}{% else %}<p class="hint">(no tiles -- its images were deleted)</p>{% endif %}
     <div>
       <h2>{{ row.set.name }} {% if not row.set.is_published %}<span class="tag tag-hidden">unpublished</span>{% endif %}</h2>
-      <p class="set-meta">{{ row.cells|length }} tiles{% if row.cells %} · {{ dims(row.grid) }}{% endif %} · position {{ row.set.sort_order }}</p>
+      <p class="set-meta">{{ row.cells|length }} tiles{% if row.cells %} · {{ dims(row.grid) }} · {{ spacing_note(row.grid) }}{% endif %} · position {{ row.set.sort_order }}</p>
     </div>
     <div class="actions">
       <a class="btn btn-secondary btn-small" href="{{ url_for('admin.set_edit', set_id=row.set.id) }}">Edit</a>

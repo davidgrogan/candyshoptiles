@@ -3,7 +3,7 @@ designer JS gets, and turning a stored layout into renderable cells."""
 from flask import url_for
 
 from app.images import image_url
-from app.layout import dimensions
+from app.layout import DEFAULT_SPACING_IN, MAX_SPACING_IN, SPACING_STEP_IN, dimensions
 from app.models import ArtImage, Category
 from app.pricing import pricing_config
 
@@ -34,7 +34,7 @@ def categories_for(images):
     ]
 
 
-def designer_config(initial_layout=None, mode="customer", include_hidden=False, **extra):
+def designer_config(initial_layout=None, mode="customer", include_hidden=False, initial_spacing=None, **extra):
     images = palette(include_hidden=include_hidden)
     config = {
         "mode": mode,
@@ -42,6 +42,8 @@ def designer_config(initial_layout=None, mode="customer", include_hidden=False, 
         "categories": categories_for(images),
         "pricing": pricing_config(),
         "initialLayout": initial_layout,
+        "initialSpacing": initial_spacing,
+        "spacing": {"default": DEFAULT_SPACING_IN, "max": MAX_SPACING_IN, "step": SPACING_STEP_IN},
         "urls": {"share": url_for("main.save_design")},
     }
     config.update(extra)
@@ -68,12 +70,17 @@ def resolve_cells(layout):
     ]
 
 
-def grid_info(cells):
+def grid_info(cells, spacing=DEFAULT_SPACING_IN):
+    """Bounding box plus real-world size. Overall size counts the gaps
+    between tiles, not around the outside."""
     rows, cols = dimensions(cells)
     cfg = pricing_config()
     return {
         "rows": rows,
         "cols": cols,
-        "width_in": cols * cfg["tileWidthIn"],
-        "height_in": rows * cfg["tileHeightIn"],
+        "spacing": spacing,
+        "tile_w": cfg["tileWidthIn"],
+        "tile_h": cfg["tileHeightIn"],
+        "width_in": cols * cfg["tileWidthIn"] + max(cols - 1, 0) * spacing,
+        "height_in": rows * cfg["tileHeightIn"] + max(rows - 1, 0) * spacing,
     }

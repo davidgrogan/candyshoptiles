@@ -23,11 +23,50 @@
   var hint = document.getElementById("wall-hint");
   var photoInput = document.getElementById("wall-photo");
   var choices = Array.prototype.slice.call(dialog.querySelectorAll(".wall-choice"));
+  var sizeEl = document.getElementById("wall-size");
+  var dimW = document.getElementById("wall-dim-w");
+  var dimH = document.getElementById("wall-dim-h");
+  var showDims = document.getElementById("wall-show-dims");
+  var DIM_OFFSET = 14; // px between the tiles and a measurement line
 
-  var GAP_IN = 0.5; // spacing between hung tiles
-  var state = { layout: [], images: null, pricing: null, wall: null, x: 0.5, y: 0.4, photoUrl: null };
+  var state = { layout: [], images: null, pricing: null, spacing: 0.5, wall: null, x: 0.5, y: 0.4, photoUrl: null };
 
   function scale() { return Number(scaleInput.value) / 100; }
+
+  // Same formatting as the designer's readouts (24.5 -> "24½″").
+  function inches(v) {
+    return window.CSTDesigner && window.CSTDesigner.inches ? window.CSTDesigner.inches(v) : v + "″";
+  }
+
+  // Real-world size of the tile pattern -- gaps between tiles count, the
+  // wall around them doesn't.
+  function realSize(d) {
+    var p = state.pricing;
+    return {
+      w: d.cols * p.tileWidthIn + Math.max(d.cols - 1, 0) * state.spacing,
+      h: d.rows * p.tileHeightIn + Math.max(d.rows - 1, 0) * state.spacing,
+    };
+  }
+
+  // Dimension lines, like on a floor plan: width below the tiles, height to
+  // their right -- each flipped to the other side when it would run off the
+  // picture. They follow the tiles as they're dragged and resized.
+  function placeDims(left, top, gw, gh, frameW, frameH) {
+    var on = showDims.checked;
+    dimW.hidden = dimH.hidden = !on;
+    if (!on) return;
+    var d = dims(), size = realSize(d);
+    var below = top + gh + DIM_OFFSET + 16 <= frameH;
+    dimW.style.left = left + "px";
+    dimW.style.width = gw + "px";
+    dimW.style.top = (below ? top + gh + DIM_OFFSET : top - DIM_OFFSET) + "px";
+    dimW.firstChild.textContent = inches(size.w);
+    var right = left + gw + DIM_OFFSET + 40 <= frameW;
+    dimH.style.top = top + "px";
+    dimH.style.height = gh + "px";
+    dimH.style.left = (right ? left + gw + DIM_OFFSET : left - DIM_OFFSET) + "px";
+    dimH.firstChild.textContent = inches(size.h);
+  }
 
   function dims() {
     var rows = 0, cols = 0;
@@ -57,19 +96,21 @@
     var ppi;
     if (state.wall.photo) {
       // Start the grid at ~40% of the photo's width, then let them adjust.
-      var gridInches = d.cols * p.tileWidthIn + (d.cols - 1) * GAP_IN;
+      var gridInches = d.cols * p.tileWidthIn + (d.cols - 1) * state.spacing;
       ppi = (0.4 * w) / Math.max(gridInches, p.tileWidthIn);
     } else {
       ppi = w / state.wall.inches;
     }
     ppi *= scale();
-    var tw = p.tileWidthIn * ppi, th = p.tileHeightIn * ppi, gap = GAP_IN * ppi;
+    var tw = p.tileWidthIn * ppi, th = p.tileHeightIn * ppi, gap = state.spacing * ppi;
     var gw = d.cols * tw + (d.cols - 1) * gap;
     var gh = d.rows * th + (d.rows - 1) * gap;
     gridEl.style.width = gw + "px";
     gridEl.style.height = gh + "px";
-    gridEl.style.left = (state.x * w - gw / 2) + "px";
-    gridEl.style.top = (state.y * h - gh / 2) + "px";
+    var left = state.x * w - gw / 2, top = state.y * h - gh / 2;
+    gridEl.style.left = left + "px";
+    gridEl.style.top = top + "px";
+    placeDims(left, top, gw, gh, w, h);
     Array.prototype.forEach.call(gridEl.children, function (el) {
       el.style.width = tw + "px";
       el.style.height = th + "px";
@@ -86,9 +127,22 @@
     state.x = 0.5;
     state.y = wall.y;
     scaleInput.value = 100;
-    hint.textContent = wall.photo
-      ? "Your photo stays on your device -- it isn't uploaded. Drag the tiles and use the size slider to fit your wall."
-      : "Drag the tiles to move them. At 100% this wall is drawn true to scale.";
+    hint.textContent = "";
+    hint.classList.toggle("wall-instruction", !!wall.photo);
+    if (wall.photo) {
+      // There's no way to know a photo's real scale, so the customer has to
+      // set it -- lead with that.
+      var lead = document.createElement("strong");
+      lead.textContent = "Adjust the scale to accurately reflect the space on the image of your wall.";
+      hint.appendChild(lead);
+      hint.appendChild(document.createTextNode(
+        " Use the Size slider until the measurements match something you know, like a door (about 80″ tall)" +
+        " or a light switch plate (about 4½″ tall), then drag the tiles into place." +
+        " Your photo stays on your device -- it isn't uploaded."
+      ));
+    } else {
+      hint.textContent = "Drag the tiles to move them. At 100% this wall is drawn true to scale.";
+    }
     if (bg.getAttribute("src") === wall.src && bg.complete) {
       place();
     } else {
@@ -113,6 +167,7 @@
   });
 
   bg.addEventListener("load", place);
+  showDims.addEventListener("change", place);
   scaleInput.addEventListener("input", place);
   document.getElementById("wall-reset").addEventListener("click", function () {
     if (!state.wall) return;
@@ -151,11 +206,15 @@
   dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
 
   window.CSTWall = {
-    open: function (layout, images, pricing) {
+    open: function (layout, images, pricing, spacing) {
       state.layout = layout;
+      state.spacing = spacing == null ? 0.5 : spacing;
       state.images = images;
       state.pricing = pricing;
       buildTiles();
+      var size = realSize(dims());
+      sizeEl.textContent = inches(size.w) + " wide × " + inches(size.h) + " tall" +
+        (state.layout.length > 1 ? " · " + inches(state.spacing) + " between tiles" : "");
       dialog.showModal();
       if (!state.wall) choices[0].click();
       else place();

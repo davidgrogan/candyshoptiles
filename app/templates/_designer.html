@@ -8,12 +8,23 @@
     </div>
     <div class="filters" id="palette-filters" role="toolbar" aria-label="Filter by category"></div>
     <div class="palette-list" id="palette-list"></div>
+    <div class="palette-resizer" id="palette-resizer" role="separator" aria-orientation="vertical"
+         aria-label="Resize tile panel" aria-valuemin="180" tabindex="0"
+         title="Drag to resize · double-click to reset"></div>
   </section>
 
   <section class="board" aria-label="Your wall">
     <div class="board-toolbar">
       <span class="board-dims" id="board-dims">No tiles yet</span>
-      <button type="button" class="btn btn-ghost btn-small" id="clear-board" disabled>Clear</button>
+      <div class="board-controls">
+        <label class="spacing-control" for="spacing-input">
+          <span>Spacing</span>
+          <input type="range" id="spacing-input" min="0" max="3" step="0.25" value="0.5"
+                 aria-describedby="spacing-value">
+          <output id="spacing-value" for="spacing-input">½″</output>
+        </label>
+        <button type="button" class="btn btn-ghost btn-small" id="clear-board" disabled>Clear</button>
+      </div>
     </div>
     <div class="board-canvas" id="board-canvas">
       <div class="grid" id="grid" aria-live="polite"></div>

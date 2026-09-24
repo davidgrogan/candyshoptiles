@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import grid_preview, dims %}
+{% from "_macros.html" import grid_preview, dims, spacing_note %}
 {% block title %}Sample sets · Candy Shop Tiles{% endblock %}
 {% block content %}
 <div class="intro">
@@ -17,13 +17,14 @@
     <div>
       <h2>{{ item.set.name }}</h2>
       {% if item.set.description %}<p>{{ item.set.description }}</p>{% endif %}
-      <p class="set-meta">{{ item.cells|length }} tiles · {{ dims(item.grid) }}</p>
+      <p class="set-meta">{{ item.cells|length }} tiles · {{ dims(item.grid) }} · {{ spacing_note(item.grid) }}</p>
     </div>
     <p class="set-price">{{ item.quote.total_cents|money }}</p>
     <div class="actions">
       <form method="post" action="{{ url_for('orders.start') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="layout" value="{{ item.set.layout_json }}">
+        <input type="hidden" name="spacing" value="{{ item.set.spacing_in }}">
         <button class="btn btn-primary btn-small" type="submit">Order this set</button>
       </form>
       <a class="btn btn-ghost btn-small" href="{{ url_for('main.designer', set=item.set.id) }}">Customize it</a>

@@ -199,3 +199,74 @@ def test_content_sync_leaves_customer_tables_alone(app, images, tmp_path):
         orders = [r[0] for r in conn.execute(text("SELECT name FROM order_request"))]
     assert titles == ["Tile 0", "Tile 1", "Tile 2"]
     assert orders == ["Real customer"]
+
+
+# --- spacing -----------------------------------------------------------------
+
+def test_parse_and_format_spacing():
+    from app.layout import format_inches, parse_spacing
+
+    assert parse_spacing("1") == 1.0
+    assert parse_spacing("0.3") == 0.25          # snapped to quarter inches
+    assert parse_spacing("9") == 3.0             # clamped
+    assert parse_spacing("-1") == 0.0
+    assert parse_spacing("nan") == 0.5 and parse_spacing(None) == 0.5
+    assert [format_inches(v) for v in (0, 0.25, 0.5, 24.5, 26, 1.75)] == ["0″", "¼″", "½″", "24½″", "26″", "1¾″"]
+
+
+def test_wall_size_includes_spacing(app):
+    from app.catalog import grid_info
+
+    cells = [{"r": 0, "c": c, "image_id": 1} for c in range(3)] + [{"r": 1, "c": 0, "image_id": 1}]
+    g = grid_info(cells, 1.0)
+    assert (g["width_in"], g["height_in"]) == (26, 21)   # 3×8+2×1, 2×10+1×1
+
+
+def test_order_and_share_keep_spacing(app, client, images):
+    layout = [{"r": 0, "c": i, "image_id": images[i]} for i in range(2)]
+    assert _order(client, layout, spacing="1.25").status_code == 302
+    url = client.post("/api/designs", json={"layout": layout, "spacing": 2}).get_json()["url"]
+    with app.app_context():
+        assert OrderRequest.query.one().spacing_in == 1.25
+        assert SavedDesign.query.one().spacing_in == 2.0
+    assert '"initialSpacing": 2.0' in client.get(url.replace("http://localhost", "")).get_data(as_text=True)
+
+
+def test_upload_titles_decode_web_filenames(app, admin_client):
+    img = io.BytesIO()
+    Image.new("RGB", (40, 50), "pink").save(img, "PNG")
+    img.seek(0)
+    admin_client.post("/admin/images/new", data={"files": [(img, "Kala%27s+Arrival.png")]},
+                      content_type="multipart/form-data")
+    with app.app_context():
+        from app.models import ArtImage
+        assert ArtImage.query.one().title == "Kala's Arrival"
+
+
+# --- sample rules ------------------------------------------------------------
+
+def test_tile_orders_never_include_a_sample(app, client, images):
+    layout = [{"r": 0, "c": 0, "image_id": images[0]}, {"r": 0, "c": 1, "image_id": images[1]}]
+    assert _order(client, layout, include_sample="1", sample_image_id=str(images[2])).status_code == 302
+    with app.app_context():
+        order = OrderRequest.query.one()
+        assert (order.include_sample, order.total_cents) == (False, 2 * 3900)
+    page = client.post("/order/start", data={"layout": json.dumps(layout)}).get_data(as_text=True)
+    assert 'id="sample-picker"' not in page and "Choose your sample tile" not in page
+
+
+def test_one_sample_per_customer(app, client, images):
+    first = _order(client, [], include_sample="1", sample_image_id=str(images[0]), email="Pat@Example.com")
+    assert first.status_code == 302
+    again = _order(client, [], include_sample="1", sample_image_id=str(images[1]), email="pat@example.com")
+    assert again.status_code == 400 and "one time only per customer" in again.get_data(as_text=True)
+    with app.app_context():
+        OrderRequest.query.one().status = "cancelled"  # cancelling releases it
+        db.session.commit()
+    assert _order(client, [], include_sample="1", sample_image_id=str(images[1])).status_code == 302
+
+
+def test_sample_page_copy(client, images):
+    page = client.get("/order/start").get_data(as_text=True)
+    assert "One time only per customer" in page
+    assert "Each customer may order one (1) $29 sample tile." in page
