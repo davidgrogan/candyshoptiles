@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ image.title }} · Admin{% endblock %}
+{% block content %}
+<div class="admin-head"><h1>Edit image</h1><a href="{{ url_for('admin.images') }}">← All images</a></div>
+<div class="edit-layout">
+  <div class="preview">
+    <img src="{{ image_url(image.filename, 'full') }}" alt="{{ image.title }}">
+    <p class="hint">{{ image.width }} × {{ image.height }} px (as stored)</p>
+  </div>
+  <div>
+    <form class="card" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label for="title">Title</label>
+        <input type="text" id="title" name="title" value="{{ image.title }}" required maxlength="200"></div>
+      <div class="field"><label for="description">Description <span class="hint">(optional, admin only for now)</span></label>
+        <textarea id="description" name="description">{{ image.description or '' }}</textarea></div>
+      {% if categories %}
+      <div class="field"><label>Categories</label>
+        <div class="checks">
+          {% for c in categories %}
+            <label><input type="checkbox" name="categories" value="{{ c.id }}" {% if c in image.categories %}checked{% endif %}> {{ c.name }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="field"><label for="sort_order">Position in palette</label>
+        <input type="number" id="sort_order" name="sort_order" value="{{ image.sort_order }}" style="max-width: 8rem">
+        <p class="hint">Lower numbers show first.</p></div>
+      <div class="field"><label class="check">
+        <input type="checkbox" name="is_active" value="1" {% if image.is_active %}checked{% endif %}>
+        <span>Show in the public designer</span></label></div>
+      <div class="field"><label for="file">Replace image file <span class="hint">(optional)</span></label>
+        <input type="file" id="file" name="file" accept="image/jpeg,image/png,image/webp"></div>
+      <button class="btn btn-secondary" type="submit">Save</button>
+    </form>
+
+    <form class="card" method="post" action="{{ url_for('admin.image_delete', image_id=image.id) }}" style="margin-top: 1rem"
+          {%- set msg = "Delete “" ~ image.title ~ "” permanently?" ~ ((" It's used in " ~ used_in|length ~ " sample set(s), which will lose that tile.") if used_in else "") %}
+          onsubmit='return confirm({{ msg|tojson }})'>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <h2>Delete</h2>
+      {% if used_in %}
+        <p>Used in: {% for s in used_in %}<a href="{{ url_for('admin.set_edit', set_id=s.id) }}">{{ s.name }}</a>{{ ', ' if not loop.last }}{% endfor %}. Those sets will lose this tile.</p>
+      {% endif %}
+      <p class="hint">Past orders keep this tile's title either way. To take it out of the designer without deleting it, untick "Show in the public designer" instead.</p>
+      <button class="btn btn-danger btn-small" type="submit">Delete image</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

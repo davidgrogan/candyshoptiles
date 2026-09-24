@@ -1,0 +1,24 @@
+{# The drag-and-drop board, shared by the public designer and the admin
+   sample-set editor. static/designer.js drives everything inside it. #}
+<div class="designer" id="designer">
+  <section class="palette" aria-label="Tile designs">
+    <div class="palette-head">
+      <h2>Pick your tiles</h2>
+      <p class="hint">Drag onto the wall, or tap to add.</p>
+    </div>
+    <div class="filters" id="palette-filters" role="toolbar" aria-label="Filter by category"></div>
+    <div class="palette-list" id="palette-list"></div>
+  </section>
+
+  <section class="board" aria-label="Your wall">
+    <div class="board-toolbar">
+      <span class="board-dims" id="board-dims">No tiles yet</span>
+      <button type="button" class="btn btn-ghost btn-small" id="clear-board" disabled>Clear</button>
+    </div>
+    <div class="board-canvas" id="board-canvas">
+      <div class="grid" id="grid" aria-live="polite"></div>
+    </div>
+    <p class="hint board-hint">Drag tiles to move or swap them. Drop a tile next to the others to grow the wall in any direction.</p>
+  </section>
+</div>
+<script type="application/json" id="designer-config">{{ config|tojson }}</script>

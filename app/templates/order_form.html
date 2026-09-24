@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import grid_preview, dims %}
+{% block title %}Request your order · Candy Shop Tiles{% endblock %}
+{% block content %}
+<div class="intro">
+  <h1>{% if cells %}Request your order{% else %}Order a sample tile{% endif %}</h1>
+  <p>No payment is taken here. Send us your order and we'll get back to you with an invoice and shipping details.</p>
+</div>
+
+{% if errors.layout %}<div class="flash flash-error">{{ errors.layout }}</div>{% endif %}
+
+<div class="order-layout">
+  <section class="card order-summary" aria-label="Your order">
+    {% if cells %}
+      {{ grid_preview(cells, grid, 360) }}
+      <p class="set-meta" style="text-align:center">{{ cells|length }} tile{{ '' if cells|length == 1 else 's' }} · {{ dims(grid) }}</p>
+      <p style="text-align:center"><a href="{{ url_for('main.designer') }}">← Back to the designer</a></p>
+    {% else %}
+      <p>A single 8″ × 10″ tile so you can see the colors and finish in person before ordering a whole wall.</p>
+      <p><a href="{{ url_for('main.designer') }}">Or design a whole wall →</a></p>
+    {% endif %}
+    <table class="price-table">
+      {% if cells %}
+      <tr><td>{{ tiles_quote.tile_count }} × {{ tiles_quote.unit_cents|money }} tile{{ '' if cells|length == 1 else 's' }}</td><td>{{ tiles_quote.tiles_cents|money }}</td></tr>
+      {% endif %}
+      <tr id="sample-line" {% if form.include_sample != '1' %}hidden{% endif %}><td>Sample tile</td><td>{{ sample_cents|money }}</td></tr>
+      <tr class="total"><td>Total</td><td id="order-total"
+          data-tiles="{{ tiles_quote.tiles_cents }}" data-sample="{{ sample_cents }}">
+          {{ (tiles_quote.tiles_cents + (sample_cents if form.include_sample == '1' else 0))|money }}</td></tr>
+    </table>
+  </section>
+
+  <form class="card" method="post" action="{{ url_for('orders.submit') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="layout" value="{{ layout_json }}">
+    <div class="hp" aria-hidden="true">
+      <label for="website">Leave this empty</label>
+      <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+
+    {% if sample_choices %}
+    <div class="sample-box field {% if errors.sample_image_id %}has-error{% endif %}">
+      <label class="check">
+        <input type="checkbox" name="include_sample" value="1" id="include-sample" {% if form.include_sample == '1' %}checked{% endif %}>
+        <span>{% if cells %}Add a sample tile ({{ sample_cents|money }}, one per order){% else %}Sample tile -- {{ sample_cents|money }} (one per order){% endif %}</span>
+      </label>
+      <select name="sample_image_id" id="sample-image" aria-label="Which design for your sample">
+        {% for img in sample_choices %}
+          <option value="{{ img.id }}" {% if (form.sample_image_id|string == img.id|string) or (not form.sample_image_id and img.id == default_sample) %}selected{% endif %}>{{ img.title }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.sample_image_id %}<p class="field-error">{{ errors.sample_image_id }}</p>{% endif %}
+    </div>
+    {% endif %}
+
+    {% macro field(name, label, type='text', autocomplete='', textarea=false, optional=false) %}
+      <div class="field {% if errors[name] %}has-error{% endif %}">
+        <label for="f-{{ name }}">{{ label }}{% if optional %} <span class="hint">(optional)</span>{% endif %}</label>
+        {% if textarea %}
+          <textarea id="f-{{ name }}" name="{{ name }}" autocomplete="{{ autocomplete }}">{{ form[name] or '' }}</textarea>
+        {% else %}
+          <input type="{{ type }}" id="f-{{ name }}" name="{{ name }}" value="{{ form[name] or '' }}" autocomplete="{{ autocomplete }}" {% if not optional %}required{% endif %}>
+        {% endif %}
+        {% if errors[name] %}<p class="field-error">{{ errors[name] }}</p>{% endif %}
+      </div>
+    {% endmacro %}
+    {{ field('name', 'Your name', autocomplete='name') }}
+    {{ field('email', 'Email', type='email', autocomplete='email') }}
+    {{ field('phone', 'Phone', type='tel', autocomplete='tel', optional=true) }}
+    {{ field('address', 'Shipping address', autocomplete='street-address', textarea=true) }}
+    {{ field('notes', 'Anything else we should know?', textarea=true, optional=true) }}
+
+    <button type="submit" class="btn btn-primary">Send order request</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var box = document.getElementById("include-sample");
+  if (!box) return;
+  var total = document.getElementById("order-total"), line = document.getElementById("sample-line");
+  var select = document.getElementById("sample-image");
+  function fmt(c) { var d = Math.floor(c / 100), r = c % 100; return "$" + d.toLocaleString("en-US") + (r ? "." + String(r).padStart(2, "0") : ""); }
+  function update() {
+    var cents = Number(total.dataset.tiles) + (box.checked ? Number(total.dataset.sample) : 0);
+    total.textContent = fmt(cents);
+    line.hidden = !box.checked;
+    select.disabled = !box.checked;
+  }
+  box.addEventListener("change", update);
+  update();
+})();
+</script>
+{% endblock %}

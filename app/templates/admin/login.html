@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Admin login · Candy Shop Tiles{% endblock %}
+{% block content %}
+<form class="card login-card" method="post" action="{{ url_for('auth.login') }}">
+  <h1>Admin login</h1>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ next_url }}">
+  <div class="field"><label for="username">Username</label>
+    <input type="text" id="username" name="username" autocomplete="username" required autofocus></div>
+  <div class="field"><label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required></div>
+  <button class="btn btn-secondary" type="submit">Log in</button>
+</form>
+{% endblock %}

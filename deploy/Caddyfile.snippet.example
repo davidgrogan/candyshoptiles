@@ -1,0 +1,40 @@
+# Paste INSIDE the existing `waveyvibe.dev { ... }` block in
+# /etc/caddy/Caddyfile, next to the existing `handle_path /localarts/*`
+# block and ABOVE the `root * /var/www/waveyvibe` / `file_server` lines
+# (otherwise file_server answers /candyshoptiles/* with a 404 first).
+# Don't change the localarts block.
+#
+# handle_path strips "/candyshoptiles" before proxying; X-Forwarded-Prefix
+# hands it back so wsgi.py's ProxyFix can generate correctly prefixed links.
+#
+# The first line makes the bare /candyshoptiles (no trailing slash) work
+# too -- handle_path /candyshoptiles/* alone doesn't match it.
+#
+# End result, roughly:
+#
+#   waveyvibe.dev {
+#       handle_path /localarts/* { ... unchanged ... }
+#
+#       redir /candyshoptiles /candyshoptiles/ 308
+#       handle_path /candyshoptiles/* {
+#           request_body {
+#               max_size 60MB
+#           }
+#           reverse_proxy localhost:8010 {
+#               header_up X-Forwarded-Prefix "/candyshoptiles"
+#           }
+#       }
+#
+#       root * /var/www/waveyvibe
+#       file_server
+#   }
+
+redir /candyshoptiles /candyshoptiles/ 308
+handle_path /candyshoptiles/* {
+    request_body {
+        max_size 60MB
+    }
+    reverse_proxy localhost:8010 {
+        header_up X-Forwarded-Prefix "/candyshoptiles"
+    }
+}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import grid_preview, dims %}
+{% block title %}Order #{{ order.id }} · Admin{% endblock %}
+{% block content %}
+<div class="admin-head">
+  <h1>Order #{{ order.id }} <span class="tag {{ 'tag-new' if order.status == 'new' }}">{{ order.status }}</span></h1>
+  <a href="{{ url_for('admin.orders') }}">← All orders</a>
+</div>
+<div class="order-layout">
+  <section class="card order-summary">
+    {% if cells %}
+      {{ grid_preview(cells, grid, 420) }}
+      <p class="set-meta" style="text-align:center">{{ order.tile_count }} tiles · {{ grid.cols }} across × {{ grid.rows }} down · {{ dims(grid) }}</p>
+      <h2>Tiles (row, column from top-left)</h2>
+      <ol class="hint">
+        {% for t in cells %}<li>Row {{ t.r + 1 }}, col {{ t.c + 1 }}: {{ t.title }}</li>{% endfor %}
+      </ol>
+    {% endif %}
+    {% if order.include_sample %}
+      <h2>Sample tile</h2>
+      <p>{{ order.sample_image_title }}</p>
+      {% if order.sample_image_filename %}<img src="{{ image_url(order.sample_image_filename) }}" alt="" style="width: 120px; aspect-ratio: 4/5; object-fit: cover; border-radius: 6px">{% endif %}
+    {% endif %}
+    <p class="set-price">{{ order.total_cents|money }}</p>
+  </section>
+  <div>
+    <section class="card" style="margin-bottom: 1rem">
+      <dl class="detail-list">
+        <dt>Received</dt><dd>{{ order.created_at.strftime('%b %-d, %Y %-I:%M %p') }} UTC</dd>
+        <dt>Name</dt><dd>{{ order.name }}</dd>
+        <dt>Email</dt><dd><a href="mailto:{{ order.email }}">{{ order.email }}</a></dd>
+        <dt>Phone</dt><dd>{{ order.phone or '--' }}</dd>
+        <dt>Ship to</dt><dd>{{ order.address or '--' }}</dd>
+        <dt>Notes</dt><dd>{{ order.notes or '--' }}</dd>
+      </dl>
+    </section>
+    <form class="card" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label for="status">Status</label>
+        <select id="status" name="status">
+          {% for s in order_statuses %}<option value="{{ s }}" {% if s == order.status %}selected{% endif %}>{{ s|capitalize }}</option>{% endfor %}
+        </select></div>
+      <div class="field"><label for="admin_notes">Private notes</label>
+        <textarea id="admin_notes" name="admin_notes">{{ order.admin_notes or '' }}</textarea></div>
+      <button class="btn btn-secondary" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

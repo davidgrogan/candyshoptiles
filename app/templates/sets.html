@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import grid_preview, dims %}
+{% block title %}Sample sets · Candy Shop Tiles{% endblock %}
+{% block content %}
+<div class="intro">
+  <h1>Sample sets</h1>
+  <p>Don't want to choose every tile yourself? Start from one of these ready-made walls. Order it as is, or open it in the designer and make it your own.</p>
+</div>
+
+{% if not sets %}
+  <p>No sample sets yet -- <a href="{{ url_for('main.designer') }}">design your own wall</a> instead.</p>
+{% else %}
+<div class="set-list">
+  {% for item in sets %}
+  <article class="card set-card">
+    {{ grid_preview(item.cells, item.grid, 300) }}
+    <div>
+      <h2>{{ item.set.name }}</h2>
+      {% if item.set.description %}<p>{{ item.set.description }}</p>{% endif %}
+      <p class="set-meta">{{ item.cells|length }} tiles · {{ dims(item.grid) }}</p>
+    </div>
+    <p class="set-price">{{ item.quote.total_cents|money }}</p>
+    <div class="actions">
+      <form method="post" action="{{ url_for('orders.start') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="layout" value="{{ item.set.layout_json }}">
+        <button class="btn btn-primary btn-small" type="submit">Order this set</button>
+      </form>
+      <a class="btn btn-ghost btn-small" href="{{ url_for('main.designer', set=item.set.id) }}">Customize it</a>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import grid_preview, dims %}
+{% block title %}Thank you · Candy Shop Tiles{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 640px; margin: 0 auto; text-align: center;">
+  <h1>Thank you!</h1>
+  <p>We've got your order request and will email you soon with an invoice and shipping details.</p>
+  {% if order %}
+    {% if cells %}{{ grid_preview(cells, grid, 280) }}
+      <p class="set-meta">{{ order.tile_count }} tile{{ '' if order.tile_count == 1 else 's' }} · {{ dims(grid) }}</p>
+    {% endif %}
+    {% if order.include_sample %}<p>Plus a sample tile: <strong>{{ order.sample_image_title }}</strong></p>{% endif %}
+    <p class="set-price">{{ order.total_cents|money }}</p>
+    <p class="hint">Order #{{ order.id }} · confirmation for {{ order.email }}</p>
+  {% endif %}
+  <p><a class="btn btn-ghost" href="{{ url_for('main.designer') }}">Back to the designer</a></p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // The ordered design is saved on our side now; start the next visit fresh.
+  try { localStorage.removeItem("candyshoptiles:design:v1"); } catch (e) {}
+</script>
+{% endblock %}

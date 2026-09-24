@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import grid_preview, dims %}
+{% block title %}Sample sets · Admin{% endblock %}
+{% block content %}
+<div class="admin-head">
+  <h1>Sample sets</h1>
+  <a class="btn btn-primary btn-small" href="{{ url_for('admin.set_new') }}">＋ New set</a>
+</div>
+{% if rows %}
+<div class="set-list">
+  {% for row in rows %}
+  <article class="card set-card">
+    {% if row.cells %}{{ grid_preview(row.cells, row.grid, 260) }}{% else %}<p class="hint">(no tiles -- its images were deleted)</p>{% endif %}
+    <div>
+      <h2>{{ row.set.name }} {% if not row.set.is_published %}<span class="tag tag-hidden">unpublished</span>{% endif %}</h2>
+      <p class="set-meta">{{ row.cells|length }} tiles{% if row.cells %} · {{ dims(row.grid) }}{% endif %} · position {{ row.set.sort_order }}</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary btn-small" href="{{ url_for('admin.set_edit', set_id=row.set.id) }}">Edit</a>
+      <form method="post" action="{{ url_for('admin.set_delete', set_id=row.set.id) }}"
+            onsubmit='return confirm({{ ("Delete the “" ~ row.set.name ~ "” set?")|tojson }})'>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger btn-small" type="submit">Delete</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+  <p>No sample sets yet. <a href="{{ url_for('admin.set_new') }}">Make one</a> with the same designer customers use.</p>
+{% endif %}
+{% endblock %}

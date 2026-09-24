@@ -1,0 +1,18 @@
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>Received</th><th>Customer</th><th>Tiles</th><th>Sample</th><th>Total</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">#{{ o.id }}</a></td>
+      <td>{{ o.created_at.strftime('%b %-d, %Y %-I:%M %p') if o.created_at else '' }} UTC</td>
+      <td>{{ o.name }}<br><span class="hint">{{ o.email }}</span></td>
+      <td>{{ o.tile_count }}</td>
+      <td>{{ 'Yes' if o.include_sample else '--' }}</td>
+      <td>{{ o.total_cents|money }}</td>
+      <td><span class="tag {{ 'tag-new' if o.status == 'new' }}">{{ o.status }}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>

@@ -1,0 +1,24 @@
+[Unit]
+Description=Candy Shop Tiles (gunicorn)
+After=network.target postgresql.service
+
+[Service]
+# Droplet convention (same as localarts / yt-playlist-podcaster): apps live
+# under /var/www/<name> and run as root.
+WorkingDirectory=/var/www/candyshoptiles
+EnvironmentFile=/var/www/candyshoptiles/deploy/candyshoptiles.env
+# Port 8010 -- localarts already has 8000. Check `ss -tlnp` before
+# installing; if 8010 is taken, change it here, in the Caddy snippet, and
+# DROPLET_APP_PORT in deploy/push_to_droplet.env.
+ExecStart=/var/www/candyshoptiles/.venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:8010 \
+    --timeout 60 \
+    --access-logfile - \
+    --error-logfile - \
+    wsgi:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

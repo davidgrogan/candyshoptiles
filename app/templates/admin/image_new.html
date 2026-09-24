@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Add images · Admin{% endblock %}
+{% block content %}
+<div class="admin-head"><h1>Add images</h1></div>
+<form class="card" method="post" enctype="multipart/form-data" style="max-width: 640px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label for="files">Image files</label>
+    <input type="file" id="files" name="files" accept="image/jpeg,image/png,image/webp" multiple required>
+    <p class="hint">JPEG, PNG or WebP. Pick several at once if you like -- each becomes its own tile, titled from its file name.
+      Portrait images at 4:5 (e.g. 1600 × 2000) fit an 8″ × 10″ tile exactly; others are center-cropped.</p>
+  </div>
+  {% if categories %}
+  <div class="field">
+    <label>Categories for these images</label>
+    <div class="checks">
+      {% for c in categories %}
+        <label><input type="checkbox" name="categories" value="{{ c.id }}"> {{ c.name }}</label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Upload</button>
+    <a class="btn btn-ghost" href="{{ url_for('admin.images') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

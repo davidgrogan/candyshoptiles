@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+instance/
+backups/
+.env
+deploy/candyshoptiles.env
+deploy/push_to_droplet.env
+.DS_Store
+*.log
+# Uploaded art images (admin uploads + seed.py's generated placeholders).
+# Real content, not source code -- deploy_all.sh rsyncs this directory to
+# the droplet instead, since `git pull` there never would.
+app/static/uploads/

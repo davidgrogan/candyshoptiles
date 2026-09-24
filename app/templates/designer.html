@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Design your tile wall · Candy Shop Tiles{% endblock %}
+{% block main_class %}page page-wide{% endblock %}
+{% block content %}
+<div class="intro">
+  <h1>Design your tile wall</h1>
+  <p>Mix and match {{ prices.TILE_WIDTH_IN }}″ × {{ prices.TILE_HEIGHT_IN }}″ art tiles, see the price as you go, then preview it on a wall -- even your own.</p>
+</div>
+{% if notice %}<div class="banner banner-info">{{ notice }}</div>{% endif %}
+
+<div class="designer-layout">
+  {% include "_designer.html" %}
+
+  <aside class="summary" aria-label="Order summary">
+    <h2>Your wall</h2>
+    <dl class="summary-lines">
+      <div><dt>Tiles</dt><dd id="sum-count">0</dd></div>
+      <div><dt>Price per tile</dt><dd id="sum-unit">--</dd></div>
+      <div><dt>Size</dt><dd id="sum-size">--</dd></div>
+    </dl>
+    <p class="summary-total"><span>Total</span><strong id="sum-total">$0</strong></p>
+    <p class="summary-note" id="sum-note">One tile is {{ prices.SINGLE_TILE_CENTS|money }}. Order two or more and they're all {{ prices.MULTI_TILE_CENTS|money }} each.</p>
+
+    <div class="summary-actions">
+      <button type="button" class="btn btn-primary" id="btn-order" disabled>Request this order</button>
+      <button type="button" class="btn btn-secondary" id="btn-wall" disabled>View on a wall</button>
+      <button type="button" class="btn btn-ghost" id="btn-share" disabled>Get a share link</button>
+    </div>
+    <div class="share-box" id="share-box" hidden>
+      <label for="share-url">Anyone with this link can see (and change a copy of) your design:</label>
+      <div class="share-row">
+        <input type="text" id="share-url" readonly>
+        <button type="button" class="btn btn-small btn-secondary" id="share-copy">Copy</button>
+      </div>
+    </div>
+    <p class="summary-sample">Not ready for a whole wall? <a href="{{ url_for('orders.start') }}">Order a sample tile</a> for {{ prices.SAMPLE_TILE_CENTS|money }}.</p>
+  </aside>
+</div>
+
+<form method="post" action="{{ url_for('orders.start') }}" id="order-form" hidden>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="layout" id="order-layout">
+</form>
+
+{% include "_wall.html" %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='designer.js') }}"></script>
+<script src="{{ url_for('static', filename='wall.js') }}"></script>
+{% endblock %}

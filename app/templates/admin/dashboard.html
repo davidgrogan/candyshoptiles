@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Admin · Candy Shop Tiles{% endblock %}
+{% block content %}
+<div class="admin-head"><h1>Admin</h1></div>
+<div class="stat-row">
+  <a class="card stat" href="{{ url_for('admin.orders', status='new') }}"><strong>{{ new_orders }}</strong>new order request{{ '' if new_orders == 1 else 's' }}</a>
+  <a class="card stat" href="{{ url_for('admin.images') }}"><strong>{{ image_count }}</strong>tile image{{ '' if image_count == 1 else 's' }}</a>
+  <a class="card stat" href="{{ url_for('admin.sets') }}"><strong>{{ set_count }}</strong>sample set{{ '' if set_count == 1 else 's' }}</a>
+</div>
+
+<h2>Recent orders</h2>
+{% if recent_orders %}
+  {% with orders = recent_orders %}{% include "admin/_orders_table.html" %}{% endwith %}
+{% else %}
+  <p class="hint">No order requests yet.</p>
+{% endif %}
+{% endblock %}

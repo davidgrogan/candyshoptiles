@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if sample_set.id else 'New' }} sample set · Admin{% endblock %}
+{% block main_class %}page page-wide{% endblock %}
+{% block content %}
+{% set f = form or {} %}
+<div class="admin-head">
+  <h1>{{ 'Edit “' ~ sample_set.name ~ '”' if sample_set.id else 'New sample set' }}</h1>
+  <a href="{{ url_for('admin.sets') }}">← All sets</a>
+</div>
+<div class="set-editor">
+  {% include "_designer.html" %}
+  <form class="card summary" method="post" id="set-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="layout" id="set-layout" value="[]">
+    <div class="field"><label for="name">Set name</label>
+      <input type="text" id="name" name="name" value="{{ f.name or sample_set.name or '' }}" required maxlength="200"></div>
+    <div class="field"><label for="description">Description <span class="hint">(shown on the Sample sets page)</span></label>
+      <textarea id="description" name="description">{{ f.description or sample_set.description or '' }}</textarea></div>
+    <div class="field"><label for="sort_order">Position</label>
+      <input type="number" id="sort_order" name="sort_order" value="{{ f.sort_order or sample_set.sort_order or 0 }}" style="max-width: 8rem"></div>
+    <div class="field"><label class="check">
+      <input type="checkbox" name="is_published" value="1" {% if (f.is_published if form else sample_set.is_published) %}checked{% endif %}>
+      <span>Published (visible on the Sample sets page)</span></label></div>
+    <p class="hint" id="board-price-hint">Priced like any other order: {{ prices.SINGLE_TILE_CENTS|money }} for one tile, {{ prices.MULTI_TILE_CENTS|money }} each for two or more.</p>
+    <button class="btn btn-primary" type="submit">Save set</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='designer.js') }}"></script>
+{% endblock %}

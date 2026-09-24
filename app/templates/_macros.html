@@ -1,0 +1,17 @@
+{# Static (non-interactive) picture of a grid. `cells` items need r, c,
+   title and filename. `max_px` caps the rendered width. #}
+{% macro grid_preview(cells, grid, max_px=320) -%}
+  {%- set cols = grid.cols if grid.cols else 1 -%}
+  {%- set rows = grid.rows if grid.rows else 1 -%}
+  <div class="grid-preview" style="--cols: {{ cols }}; --rows: {{ rows }}; max-width: min(100%, {{ [max_px, cols * 140]|min }}px);"
+       role="img" aria-label="{{ cells|length }} tile grid, {{ rows }} by {{ cols }}">
+    {%- for t in cells %}
+      <img src="{{ image_url(t.filename) }}" alt="{{ t.title }}" title="{{ t.title }}"
+           style="grid-row: {{ t.r + 1 }}; grid-column: {{ t.c + 1 }};" loading="lazy">
+    {%- endfor %}
+  </div>
+{%- endmacro %}
+
+{% macro dims(grid) -%}
+  {{ grid.width_in }}″ wide × {{ grid.height_in }}″ tall
+{%- endmacro %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Images · Admin{% endblock %}
+{% block content %}
+<div class="admin-head">
+  <h1>Tile images</h1>
+  <a class="btn btn-primary btn-small" href="{{ url_for('admin.image_new') }}">＋ Add images</a>
+</div>
+<p class="hint">Click an image to edit its title, categories and order, replace the file, hide it, or delete it. Tiles show 8″ × 10″, center-cropped.</p>
+{% if images %}
+<div class="image-grid">
+  {% for img in images %}
+  <a class="image-card {{ 'hidden-image' if not img.is_active }}" href="{{ url_for('admin.image_edit', image_id=img.id) }}">
+    <img src="{{ image_url(img.filename) }}" alt="" loading="lazy">
+    <div class="meta">
+      <strong>{{ img.title }}</strong>
+      {% if not img.is_active %}<span class="tag tag-hidden">hidden</span>{% endif %}
+      {% for c in img.categories %}<span class="tag">{{ c.name }}</span>{% endfor %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+  <p>No images yet. <a href="{{ url_for('admin.image_new') }}">Add some</a>, or run <code>python seed.py</code> for placeholders.</p>
+{% endif %}
+{% endblock %}

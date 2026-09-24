@@ -1,0 +1,39 @@
+{# "View on a wall" dialog. The customer's own photo is only ever read in
+   their browser (URL.createObjectURL) -- it is never uploaded. #}
+<dialog class="wall-dialog" id="wall-dialog" aria-labelledby="wall-title">
+  <div class="wall-head">
+    <h2 id="wall-title">Your tiles on a wall</h2>
+    <button type="button" class="btn btn-ghost btn-small" id="wall-close" aria-label="Close">Close ✕</button>
+  </div>
+  <div class="wall-choices" role="radiogroup" aria-label="Choose a wall">
+    {% for wall in [
+      {'id': 'painted', 'name': 'Painted wall', 'file': 'walls/painted.jpg', 'inches': 132, 'y': 0.42},
+      {'id': 'sofa', 'name': 'Above a sofa', 'file': 'walls/sofa.jpg', 'inches': 168, 'y': 0.36},
+      {'id': 'entry', 'name': 'Entryway', 'file': 'walls/entry.jpg', 'inches': 144, 'y': 0.36},
+    ] %}
+      <button type="button" class="wall-choice" data-wall="{{ wall.id }}" role="radio"
+              data-src="{{ url_for('static', filename=wall.file) }}" data-inches="{{ wall.inches }}" data-y="{{ wall.y }}">
+        <img src="{{ url_for('static', filename=wall.file) }}" alt="">
+        <span>{{ wall.name }}</span>
+      </button>
+    {% endfor %}
+    <label class="wall-choice wall-upload" role="radio">
+      <input type="file" accept="image/*" id="wall-photo" class="visually-hidden">
+      <span class="wall-upload-icon" aria-hidden="true">＋</span>
+      <span>Your own photo</span>
+    </label>
+  </div>
+  <div class="wall-stage">
+    <div class="wall-frame" id="wall-stage">
+      <img id="wall-bg" alt="Wall background">
+      <div class="wall-grid" id="wall-grid" title="Drag to move"></div>
+    </div>
+  </div>
+  <div class="wall-controls">
+    <label for="wall-scale">Size</label>
+    <input type="range" id="wall-scale" min="25" max="250" value="100">
+    <span id="wall-scale-label">True to scale</span>
+    <button type="button" class="btn btn-ghost btn-small" id="wall-reset">Reset</button>
+  </div>
+  <p class="hint" id="wall-hint">Drag the tiles to move them. Built-in walls are drawn true to scale.</p>
+</dialog>

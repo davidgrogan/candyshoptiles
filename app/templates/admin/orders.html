@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Orders · Admin{% endblock %}
+{% block content %}
+<div class="admin-head"><h1>Order requests</h1></div>
+<div class="filters" style="margin-bottom: 1rem">
+  <a class="pill {{ 'active' if not status }}" href="{{ url_for('admin.orders') }}">All</a>
+  {% for s in order_statuses %}
+    <a class="pill {{ 'active' if status == s }}" href="{{ url_for('admin.orders', status=s) }}">{{ s|capitalize }}</a>
+  {% endfor %}
+</div>
+{% if orders %}
+  {% include "admin/_orders_table.html" %}
+{% else %}
+  <p class="hint">No {{ status ~ ' ' if status }}order requests.</p>
+{% endif %}
+{% endblock %}
